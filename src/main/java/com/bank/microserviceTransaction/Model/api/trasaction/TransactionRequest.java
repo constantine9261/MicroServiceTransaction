@@ -4,7 +4,8 @@ import lombok.Data;
 
 @Data
 public class TransactionRequest {
-    private String accountId;
-    private String type; // "DEPOSIT" o "WITHDRAWAL"
-    private Double amount;
+    private String accountId;       // ID de la cuenta origen
+    private String type;            // "DEPOSIT", "WITHDRAWAL", o "TRANSFER"
+    private Double amount;          // Monto de la transacción
+    private String targetAccountId; // (Opcional) ID de la cuenta destino en caso de transferencia
 }

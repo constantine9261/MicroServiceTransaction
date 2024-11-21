@@ -22,4 +22,6 @@ public interface ITransactionService {
      * @return Un Flux que emite los DTOs de las transacciones asociadas con la cuenta especificada.
      */
     Flux<TransactionDto> getTransactionsByAccountId(String accountId);
+
+    Mono<Void> transferBetweenAccounts(TransactionRequest request);
 }

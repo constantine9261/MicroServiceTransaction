@@ -88,4 +88,64 @@ public class TransactionServiceImpl implements ITransactionService {
         return transactionRepository.findByAccountId(accountId)
                 .map(this::convertToDto);
     }
+
+    @Override
+    public Mono<Void> transferBetweenAccounts(TransactionRequest request) {
+        if (!"TRANSFER".equalsIgnoreCase(request.getType())) {
+            return Mono.error(new IllegalArgumentException("El tipo de transacción debe ser 'TRANSFER'"));
+        }
+
+        if (request.getAmount() <= 0) {
+            return Mono.error(new IllegalArgumentException("El monto de la transferencia debe ser mayor a cero"));
+        }
+
+        return accountWebClient.get()
+                .uri("/{id}", request.getAccountId())
+                .retrieve()
+                .bodyToMono(AccountDto.class)
+                .flatMap(fromAccount -> {
+                    if (fromAccount.getBalance() < request.getAmount()) {
+                        return Mono.error(new IllegalArgumentException("Saldo insuficiente en la cuenta origen"));
+                    }
+
+                    return accountWebClient.get()
+                            .uri("/{id}", request.getTargetAccountId())
+                            .retrieve()
+                            .bodyToMono(AccountDto.class)
+                            .flatMap(toAccount -> {
+                                // Actualizar saldos
+                                double newFromBalance = fromAccount.getBalance() - request.getAmount();
+                                double newToBalance = toAccount.getBalance() + request.getAmount();
+
+                                Mono<Void> updateFromAccount = accountWebClient.put()
+                                        .uri("/{id}/balance", fromAccount.getId())
+                                        .bodyValue(new AccountBalanceUpdateRequest(newFromBalance))
+                                        .retrieve()
+                                        .bodyToMono(Void.class);
+
+                                Mono<Void> updateToAccount = accountWebClient.put()
+                                        .uri("/{id}/balance", toAccount.getId())
+                                        .bodyValue(new AccountBalanceUpdateRequest(newToBalance))
+                                        .retrieve()
+                                        .bodyToMono(Void.class);
+
+                                // Guardar transacción
+                                TransactionEntity transaction = TransactionEntity.builder()
+                                        .accountId(request.getAccountId())
+                                        .type("TRANSFER")
+                                        .amount(request.getAmount())
+                                        .balanceAfterTransaction(newFromBalance)
+                                        .transactionDate(LocalDateTime.now())
+                                        .build();
+
+                                Mono<TransactionEntity> saveTransaction = transactionRepository.save(transaction);
+
+                                return updateFromAccount
+                                        .then(updateToAccount)
+                                        .then(saveTransaction)
+                                        .then();
+                            });
+                });
+    }
+
 }
