@@ -1,15 +1,18 @@
 package com.bank.microserviceTransaction.Model.api.trasaction;
 
+import lombok.Builder;
 import lombok.Data;
 
 @Data
+@Builder
 public class AccountDto {
     private String id;
     private String accountNumber;
     private String customerId;
-    private String type; // "SAVINGS", "CURRENT", "FIXED", etc.
-    private Double balance = 0.0; // Valor predeterminado
+    private String type;
+    private Double balance;
     private Integer maxTransactions;
     private Double monthlyFee;
-    private String allowedWithdrawalDate;
+    private String allowedWithdrawalDate;  // Asegúrate de que el formato de la fecha sea compatible
+    private Boolean debitCardLinked;
 }
